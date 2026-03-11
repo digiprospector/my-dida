@@ -1,0 +1,327 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="description" content="My Dida — 一个简洁美观的待办事项应用">
+
+  <!-- PWA Meta Tags -->
+  <meta name="theme-color" content="#6C5CE7">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="My Dida">
+
+  <!-- Icons -->
+  <link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png">
+  <link rel="apple-touch-icon" href="icons/icon-192.png">
+
+  <!-- Manifest -->
+  <link rel="manifest" href="manifest.json">
+
+  <!-- Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+  <!-- Stylesheet -->
+  <link rel="stylesheet" href="style.css">
+
+  <title>My Dida — 待办事项</title>
+</head>
+<body>
+  <div class="app-container" id="app-container">
+    <!-- Header -->
+    <header class="app-header">
+      <div class="header-title-row">
+        <h1 id="page-title">今天</h1>
+        <button id="refresh-btn" class="icon-btn refresh-btn" aria-label="刷新数据">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <polyline points="23 4 23 10 17 10"></polyline>
+            <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"></path>
+          </svg>
+        </button>
+      </div>
+    </header>
+
+    <!-- Add Task Modal (Hidden by Default) -->
+    <div id="add-task-modal" class="modal-overlay hidden" style="display: none;">
+      <div class="modal-content">
+        <form id="add-task-form" class="add-task-form">
+          <!-- Top row: text input + toolbar buttons -->
+          <div class="form-top-row">
+            <!-- Emoji Category Selector Dropdown -->
+            <select id="emoji-select" class="emoji-select">
+              <option value="">无分类</option>
+              <option value="📚">📚 读书</option>
+              <option value="🏃">🏃 运动</option>
+              <option value="💼">💼 工作</option>
+              <option value="🛌">🛌 休息</option>
+              <option value="🛒">🛒 购物</option>
+              <option value="🍳">🍳 烹饪</option>
+              <option value="🗓️">🗓️ 日程</option>
+              <option value="💊">💊 药品</option>
+              <option value="💰">💰 财务</option>
+              <option value="🧹">🧹 家务</option>
+              <option value="🎨">🎨 艺术</option>
+              <option value="🎮">🎮 游戏</option>
+              <option value="📈">📈 股票</option>
+              <option value="💻">💻 电脑</option>
+              <option value="🧘">🧘 冥想</option>
+              <option value="🎵">🎵 音乐</option>
+              <option value="🐾">🐾 宠物</option>
+            </select>
+
+            <input
+              type="text"
+              id="task-input"
+              class="task-input"
+              placeholder="添加新任务..."
+              autocomplete="off"
+              maxlength="200"
+            >
+            <!-- 📅 Recurrence toggle (hidden, panel always visible) -->
+            <button type="button" id="recurrence-toggle-btn" class="icon-tool-btn" aria-label="设置日期" title="日期" style="display:none;">
+              📅
+            </button>
+            <!-- ⏰ Reminder toggle -->
+            <button type="button" id="reminders-toggle-btn" class="icon-tool-btn" aria-label="设置提醒" title="提醒时间">
+              ⏰
+            </button>
+            <!-- ⭐ Countdown toggle -->
+            <button type="button" id="countdown-toggle-btn" class="icon-tool-btn" aria-label="标为倒数日" title="倒数日">
+              ⭐
+            </button>
+            <!-- Save -->
+            <button type="submit" id="add-btn" class="add-btn" aria-label="保存任务">
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                <line x1="12" y1="5" x2="12" y2="19"></line>
+                <line x1="5" y1="12" x2="19" y2="12"></line>
+              </svg>
+            </button>
+          </div>
+
+          <!-- 🔁 Recurrence Panel -->
+          <div id="recurrence-panel" class="expand-panel" style="display:none;">
+            <div class="panel-header">
+              <span class="panel-title">📅 日期</span>
+              <button type="button" id="recurrence-close-btn" class="panel-close-btn">✕</button>
+            </div>
+
+            <!-- Top-level mode selector: 单次 vs 循环 -->
+            <div class="type-tabs" id="recurrence-mode-tabs">
+              <button type="button" class="type-tab active" data-mode="once">单次</button>
+              <button type="button" class="type-tab" data-mode="recurring">循环</button>
+            </div>
+
+            <!-- Sub-type selector (only visible when 循环 is selected) -->
+            <div class="type-tabs rec-subtypes" id="recurrence-tabs" style="display:none;">
+              <button type="button" class="type-tab active" data-type="daily">每天</button>
+              <button type="button" class="type-tab" data-type="weekly">每周</button>
+              <button type="button" class="type-tab" data-type="monthly">每月</button>
+              <button type="button" class="type-tab" data-type="yearly">每年</button>
+            </div>
+
+            <div id="rec-daily-opts" class="rec-opts" style="display:none;">
+              <label class="opts-label">每</label>
+              <input type="number" id="rec-daily-interval" class="small-num-input" min="1" max="365" value="1">
+              <span class="opts-unit">天</span>
+            </div>
+
+            <div id="rec-weekly-opts" class="rec-opts" style="display:none;">
+              <label class="opts-label">每周</label>
+              <div class="weekday-picker" id="weekday-picker">
+                <button type="button" class="weekday-btn" data-day="1">一</button>
+                <button type="button" class="weekday-btn" data-day="2">二</button>
+                <button type="button" class="weekday-btn" data-day="3">三</button>
+                <button type="button" class="weekday-btn" data-day="4">四</button>
+                <button type="button" class="weekday-btn" data-day="5">五</button>
+                <button type="button" class="weekday-btn" data-day="6">六</button>
+                <button type="button" class="weekday-btn" data-day="0">日</button>
+              </div>
+            </div>
+
+            <div id="rec-monthly-opts" class="rec-opts" style="display:none;">
+              <label class="opts-label">每月</label>
+              <div class="monthly-days-input">
+                <input type="text" id="rec-monthly-days" class="text-input-sm" placeholder="如：1,15 或 -1（倒数第1天）">
+              </div>
+              <span class="opts-hint">正数=几号，负数=倒数第几天，逗号分隔</span>
+            </div>
+
+            <div id="rec-yearly-opts" class="rec-opts" style="display:none;">
+              <label class="opts-label">每年</label>
+              <select id="rec-yearly-month" class="small-select">
+                <option value="1">1月</option><option value="2">2月</option><option value="3">3月</option>
+                <option value="4">4月</option><option value="5">5月</option><option value="6">6月</option>
+                <option value="7">7月</option><option value="8">8月</option><option value="9">9月</option>
+                <option value="10">10月</option><option value="11">11月</option><option value="12">12月</option>
+              </select>
+              <input type="number" id="rec-yearly-day" class="small-num-input" min="1" max="31" value="1">
+              <span class="opts-unit">日</span>
+            </div>
+
+            <!-- Start date for recurrence -->
+            <div class="rec-opts" id="rec-start-row">
+              <label class="opts-label">开始</label>
+              <input type="date" id="rec-start-date" class="small-date-input">
+            </div>
+
+            <!-- End date for recurrence -->
+            <div class="rec-opts" id="rec-end-row">
+              <label class="opts-label">结束</label>
+              <div class="end-date-wrapper" style="display:flex; gap: 8px; flex: 1;">
+                <input type="text" id="rec-end-date" class="small-date-input" style="flex: 1;" placeholder="无结束日期" onfocus="(this.type='date')" onblur="(this.value ? this.type='date' : this.type='text')">
+                <button type="button" id="clear-end-date-btn" class="clear-btn" aria-label="无结束日期" title="无结束日期">无结束日期</button>
+              </div>
+            </div>
+          </div>
+
+          <!-- ⏰ Reminders Panel -->
+          <div id="reminders-panel" class="expand-panel" style="display:none;">
+            <div class="panel-header">
+              <span class="panel-title">⏰ 提醒</span>
+              <button type="button" id="reminders-close-btn" class="panel-close-btn">✕</button>
+            </div>
+            <div id="reminder-cards-list"></div>
+            <button type="button" id="add-reminder-card-btn" class="add-item-btn">＋ 添加提醒</button>
+          </div>
+
+          <!-- 📅 History Button (only shown for recurring tasks) -->
+          <div id="task-history-panel" class="expand-panel" style="display:none;">
+            <button type="button" id="open-history-btn" class="history-open-btn">
+              📅 打卡记录
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"></polyline></svg>
+            </button>
+          </div>
+
+          <!-- Calendar History Overlay -->
+          <div id="history-calendar-overlay" class="history-calendar-overlay" style="display:none;">
+            <div class="history-calendar-content">
+              <div class="history-calendar-header">
+                <button type="button" id="cal-prev-month" class="cal-nav-btn">‹</button>
+                <span id="cal-month-label" class="cal-month-label"></span>
+                <button type="button" id="cal-next-month" class="cal-nav-btn">›</button>
+                <button type="button" id="close-history-btn" class="panel-close-btn" style="margin-left:auto;">✕</button>
+              </div>
+              <div class="cal-weekday-row">
+                <span>日</span><span>一</span><span>二</span><span>三</span><span>四</span><span>五</span><span>六</span>
+              </div>
+              <div id="cal-grid" class="cal-grid"></div>
+              <div id="cal-summary" class="cal-summary"></div>
+            </div>
+          </div>
+
+          <!-- Legacy hidden inputs kept for backward compat -->
+          <input type="hidden" id="reminder-time">
+        </form>
+      </div>
+    </div>
+
+    <!-- Task Stats -->
+    <div class="task-stats" id="task-stats">
+      <span id="stats-text">加载中...</span>
+    </div>
+
+    <!-- Task List -->
+    <ul class="task-list" id="task-list">
+      <!-- Tasks are rendered here by JS -->
+    </ul>
+
+    <!-- Empty State -->
+    <div class="empty-state" id="empty-state" style="display: none;">
+      <div class="empty-icon">🎉</div>
+      <p>太棒了，没有待办事项！</p>
+    </div>
+
+    <!-- Loading State -->
+    <div class="loading-state" id="loading-state">
+      <div class="spinner"></div>
+      <p>正在加载...</p>
+    </div>
+
+    <!-- Error State -->
+    <div class="error-state" id="error-state" style="display: none;">
+      <div class="error-icon">⚠️</div>
+      <p id="error-message">连接失败，请检查网络</p>
+      <button id="retry-btn" class="retry-btn">重试</button>
+    </div>
+
+    <!-- Settings Tab Content (Hidden by Default) -->
+    <div id="settings-tab" style="display: none;">
+      <div class="settings-section">
+        <h3>基本设置</h3>
+        <p class="subtitle">今天也要加油哦 <span class="version-tag">v1.0.0</span></p>
+
+        <button id="enable-notifications-btn" class="enable-notifications-btn">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path>
+            <path d="M13.73 21a2 2 0 0 1-3.46 0"></path>
+          </svg>
+          开启推送通知
+        </button>
+
+        <div class="dev-tools" id="dev-tools">
+          <button id="clear-subs-btn" class="dev-btn">🧹 清除所有推送订阅 (Dev)</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Floating Action Button -->
+  <button id="fab-add-btn" class="fab-btn" aria-label="新增任务">
+      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <line x1="12" y1="5" x2="12" y2="19"></line>
+        <line x1="5" y1="12" x2="19" y2="12"></line>
+      </svg>
+    </button>
+
+    <!-- Bottom Navigation -->
+    <nav class="bottom-nav">
+      <button class="nav-item active" data-tab="today" aria-label="今天">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <polyline points="9 11 12 14 22 4"></polyline>
+          <path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"></path>
+        </svg>
+      </button>
+      <button class="nav-item" data-tab="all" aria-label="全部">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="12" cy="12" r="10"></circle>
+          <polyline points="12 6 12 12 16 14"></polyline>
+        </svg>
+      </button>
+      <button class="nav-item" data-tab="countdown" aria-label="倒数日">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
+          <line x1="16" y1="2" x2="16" y2="6"></line>
+          <line x1="8" y1="2" x2="8" y2="6"></line>
+          <line x1="3" y1="10" x2="21" y2="10"></line>
+          <polygon points="12 12 13.5 15.5 17 16 14.5 18.5 15 22 12 20 9 22 9.5 18.5 7 16 10.5 15.5 12 12"></polygon>
+        </svg>
+      </button>
+      <button class="nav-item" data-tab="settings" aria-label="配置">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="12" cy="12" r="3"></circle>
+          <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
+        </svg>
+      </button>
+    </nav>
+  </div>
+
+  <!-- Supabase JS SDK (via CDN) -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+
+  <!-- App Logic -->
+  <script src="app.js"></script>
+
+  <!-- Register Service Worker -->
+  <script>
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('service-worker.js')
+          .then(reg => console.log('Service Worker 已注册', reg.scope))
+          .catch(err => console.error('Service Worker 注册失败', err));
+      });
+    }
+  </script>
+</body>
+</html>
