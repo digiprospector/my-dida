@@ -1,0 +1,11 @@
+# Local configuration
+config.js
+
+# Environment files
+.env
+.env.local
+
+# Build artifacts
+dist/
+node_modules/
+.DS_Store

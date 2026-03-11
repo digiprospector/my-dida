@@ -697,7 +697,6 @@ input {
 }
 
 .task-item.completed .task-text {
-  text-decoration: line-through;
   color: var(--color-text-muted);
 }
 
