@@ -60,10 +60,11 @@ let todos = [];
 let reminderTimers = {};
 let currentTab = 'today';
 let editingTodoId = null;
+let currentUser = null; // Track logged-in user
 
 // ──────────────────── Init ────────────────────
 document.addEventListener('DOMContentLoaded', () => {
-  loadTodos();
+  initAuth(); // Initialize authentication
   taskForm.addEventListener('submit', handleAddTask);
   retryBtn.addEventListener('click', loadTodos);
 
@@ -1003,6 +1004,11 @@ function cancelReminders(id) {
 
 // ──────────────────── Load Todos ────────────────────
 async function loadTodos() {
+  if (!currentUser) {
+    todos = [];
+    renderTodos();
+    return;
+  }
   showLoading();
   try {
     const { data, error } = await supabaseClient
@@ -1040,6 +1046,7 @@ async function handleAddTask(e) {
   taskInput.disabled = true;
   try {
     const upsertData = { 
+      user_id: currentUser.id, // Explicit user_id assignment
       text, 
       completed: false,
       is_countdown: isCountdownEnabled 
@@ -1462,6 +1469,127 @@ function formatReminderDisplay(isoString) {
   if (isToday) return `今天 ${timeStr}`;
   if (isTomorrow) return `明天 ${timeStr}`;
   return `${date.getMonth() + 1}/${date.getDate()} ${timeStr}`;
+}
+
+// ──────────────────── Auth Logic ────────────────────
+async function initAuth() {
+  const { data: { session } } = await supabaseClient.auth.getSession();
+  handleAuthStateChange(session);
+
+  supabaseClient.auth.onAuthStateChange((_event, session) => {
+    handleAuthStateChange(session);
+  });
+
+  // UI Event Listeners for Auth
+  document.getElementById('landing-login-btn').addEventListener('click', openAuthModal);
+  document.getElementById('auth-close-btn').addEventListener('click', closeAuthModal);
+  document.getElementById('header-logout-btn').addEventListener('click', handleLogout);
+  document.getElementById('auth-form').addEventListener('submit', handleAuthSubmit);
+  document.getElementById('auth-switch-link').addEventListener('click', toggleAuthMode);
+
+  // Header User Profile Click (Toggle Dropdown)
+  const headerProfile = document.getElementById('header-user-profile');
+  const logoutDropdown = document.getElementById('logout-dropdown');
+  headerProfile.addEventListener('click', (e) => {
+    e.stopPropagation();
+    const isVisible = logoutDropdown.style.display === 'block';
+    logoutDropdown.style.display = isVisible ? 'none' : 'block';
+  });
+
+  // Close dropdown on outside click
+  document.addEventListener('click', () => {
+    logoutDropdown.style.display = 'none';
+  });
+}
+
+function handleAuthStateChange(session) {
+  currentUser = session?.user || null;
+  const unauthLanding = document.getElementById('unauth-landing');
+  const mainContent = document.getElementById('main-content-tabs');
+  const navBar = document.querySelector('.bottom-nav');
+  const fabBtn = document.getElementById('fab-add-btn');
+  const headerProfile = document.getElementById('header-user-profile');
+  const headerUsername = document.getElementById('header-username');
+
+  if (currentUser) {
+    unauthLanding.style.display = 'none';
+    mainContent.style.display = 'block';
+    if (navBar) navBar.style.display = 'flex';
+    if (fabBtn) fabBtn.style.display = 'flex';
+    
+    // Header UI
+    headerProfile.style.display = 'flex';
+    headerUsername.textContent = currentUser.email.split('@')[0];
+    
+    loadTodos(); 
+  } else {
+    unauthLanding.style.display = 'flex';
+    mainContent.style.display = 'none';
+    if (navBar) navBar.style.display = 'none';
+    if (fabBtn) fabBtn.style.display = 'none';
+    headerProfile.style.display = 'none';
+    
+    todos = [];
+    renderTodos();
+  }
+}
+
+function openAuthModal() {
+  const modal = document.getElementById('auth-modal');
+  modal.style.display = 'flex';
+  setTimeout(() => modal.classList.remove('hidden'), 10);
+}
+
+function closeAuthModal() {
+  const modal = document.getElementById('auth-modal');
+  modal.classList.add('hidden');
+  setTimeout(() => modal.style.display = 'none', 300);
+}
+
+let isSignUpMode = false;
+function toggleAuthMode(e) {
+  e.preventDefault();
+  isSignUpMode = !isSignUpMode;
+  document.getElementById('auth-title').textContent = isSignUpMode ? '注册 My Dida' : '登录 My Dida';
+  document.getElementById('auth-submit-btn').textContent = isSignUpMode ? '注册' : '登录';
+  document.getElementById('auth-switch-link').textContent = isSignUpMode ? '立即登录' : '立即注册';
+  document.querySelector('.auth-switch-text').firstChild.textContent = isSignUpMode ? '已经有账号？' : '还没有账号？';
+}
+
+async function handleAuthSubmit(e) {
+  e.preventDefault();
+  const username = document.getElementById('auth-username').value.trim();
+  const password = document.getElementById('auth-password').value;
+  const submitBtn = document.getElementById('auth-submit-btn');
+
+  // Map username to a pseudo-email for Supabase
+  const email = username.includes('@') ? username : `${username}@dida.local`;
+
+  submitBtn.disabled = true;
+  submitBtn.textContent = '请稍候...';
+
+  try {
+    if (isSignUpMode) {
+      const { error } = await supabaseClient.auth.signUp({ email, password });
+      if (error) throw error;
+      alert('注册成功！如果开启了邮件验证，请查收邮件。');
+    } else {
+      const { error } = await supabaseClient.auth.signInWithPassword({ email, password });
+      if (error) throw error;
+      closeAuthModal();
+    }
+  } catch (err) {
+    alert('错误: ' + err.message);
+  } finally {
+    submitBtn.disabled = false;
+    submitBtn.textContent = isSignUpMode ? '注册' : '登录';
+  }
+}
+
+async function handleLogout() {
+  if (confirm('确定要退出登录吗？')) {
+    await supabaseClient.auth.signOut();
+  }
 }
 
 // ──────────────────── Escape HTML ────────────────────

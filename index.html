@@ -34,12 +34,20 @@
     <header class="app-header">
       <div class="header-title-row">
         <h1 id="page-title">今天</h1>
-        <button id="refresh-btn" class="icon-btn refresh-btn" aria-label="刷新数据">
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <polyline points="23 4 23 10 17 10"></polyline>
-            <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"></path>
-          </svg>
-        </button>
+        <div class="header-actions">
+          <button id="refresh-btn" class="icon-btn refresh-btn" aria-label="刷新数据">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <polyline points="23 4 23 10 17 10"></polyline>
+              <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"></path>
+            </svg>
+          </button>
+          <div id="header-user-profile" class="header-user-profile" style="display: none;">
+            <span id="header-username" class="header-username">walt</span>
+            <div id="logout-dropdown" class="logout-dropdown" style="display: none;">
+              <button id="header-logout-btn">退出登录</button>
+            </div>
+          </div>
+        </div>
       </div>
     </header>
 
@@ -222,10 +230,22 @@
       <span id="stats-text">加载中...</span>
     </div>
 
-    <!-- Task List -->
-    <ul class="task-list" id="task-list">
+    <!-- Unauthenticated Landing State -->
+    <div id="unauth-landing" class="unauth-landing" style="display: none;">
+      <div class="landing-content">
+        <div class="landing-icon">🏆</div>
+        <h2>欢迎来到 My Dida</h2>
+        <p>登录您的账号以管理同步任务</p>
+        <button id="landing-login-btn" class="primary-btn">立即登录 / 注册</button>
+      </div>
+    </div>
+
+    <!-- Main Content Tabs -->
+    <div id="main-content-tabs">
+      <!-- Today Tab -->
+      <ul id="task-list" class="task-list"></ul>
       <!-- Tasks are rendered here by JS -->
-    </ul>
+    </div>
 
     <!-- Empty State -->
     <div class="empty-state" id="empty-state" style="display: none;">
@@ -250,7 +270,7 @@
     <div id="settings-tab" style="display: none;">
       <div class="settings-section">
         <h3>基本设置</h3>
-        <p class="subtitle">今天也要加油哦 <span class="version-tag">v1.0.1</span></p>
+        <p class="subtitle">今天也要加油哦 <span class="version-tag">v1.1.0</span></p>
 
         <button id="enable-notifications-btn" class="enable-notifications-btn">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -305,6 +325,30 @@
         </svg>
       </button>
     </nav>
+  </div>
+
+  <!-- Auth Modal -->
+  <div id="auth-modal" class="modal-overlay hidden" style="display: none;">
+    <div class="modal-content auth-modal-content">
+      <div class="modal-header">
+        <h2 id="auth-title">登录 My Dida</h2>
+        <button id="auth-close-btn" class="close-btn">&times;</button>
+      </div>
+      <form id="auth-form" class="auth-form">
+        <div class="form-group">
+          <label for="auth-username">用户名</label>
+          <input type="text" id="auth-username" placeholder="请输入用户名" required>
+        </div>
+        <div class="form-group">
+          <label for="auth-password">密码</label>
+          <input type="password" id="auth-password" placeholder="请输入密码" required>
+        </div>
+        <button type="submit" id="auth-submit-btn" class="auth-submit-btn">登录</button>
+        <p class="auth-switch-text">
+          还没有账号？<a href="#" id="auth-switch-link">立即注册</a>
+        </p>
+      </form>
+    </div>
   </div>
 
   <!-- Supabase JS SDK (via CDN) -->
