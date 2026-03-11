@@ -944,9 +944,17 @@ function urlBase64ToUint8Array(base64String) {
   return outputArray;
 }
 
-function sendNotification(title, body) {
+function sendNotification(title, body, tag) {
+  const options = { 
+    body, 
+    icon: 'icons/icon-192.png', 
+    badge: 'icons/icon-192.png', 
+    tag: tag || 'my-dida-general-rem', 
+    requireInteraction: true 
+  };
+  
   if ('Notification' in window && Notification.permission === 'granted') {
-    new Notification(title, { body, icon: 'icons/icon-192.png', badge: 'icons/icon-192.png', tag: 'my-dida-reminder', requireInteraction: true });
+    new Notification(title, options);
   } else {
     alert(`⏰ 提醒: ${body}`);
   }
@@ -969,7 +977,7 @@ function setupReminderTimers() {
         const delay = ts.getTime() - now;
         if (delay > 0 && delay <= 2147483647) {
           timerIds.push(setTimeout(() => {
-            sendNotification('📝 My Dida 提醒', todo.text);
+            sendNotification('📝 My Dida 提醒', todo.text, `dida-task-${todo.id}`);
             renderTodos();
           }, delay));
         }
@@ -989,7 +997,7 @@ function scheduleReminder(todo) {
   if (delay <= 0 || delay > 2147483647) return;
 
   reminderTimers[todo.id] = [setTimeout(() => {
-    sendNotification('📝 My Dida 提醒', todo.text);
+    sendNotification('📝 My Dida 提醒', todo.text, `dida-task-${todo.id}`);
     delete reminderTimers[todo.id];
     renderTodos();
   }, delay)];
@@ -1297,66 +1305,8 @@ function renderTodos() {
     li.className = `task-item${isCompletedStyle ? ' completed' : ''}`;
     li.dataset.id = todo.id;
 
-    // Build badge HTML
-    let badgesHtml = '';
-
-    // Recurrence badge
-    const recDesc = describeRecurrence(todo.recurrence);
-    if (recDesc) {
-      badgesHtml += `<span class="reminder-badge recurrence-badge">↻ ${escapeHtml(recDesc)}</span>`;
-    }
-    // Countdown badge
-    if (todo.is_countdown) {
-      badgesHtml += `<span class="reminder-badge date-badge" style="color: #f39c12 !important; background: rgba(243, 156, 18, 0.1) !important;">⭐ 倒数日</span>`;
-    }
-    // Scheduled date badge
-    if (todo.scheduled_date) {
-      let displayDateStr = todo.scheduled_date;
-      if (todo.recurrence && (currentTab === 'all' || currentTab === 'countdown')) {
-          const schedDate = new Date(todo.scheduled_date + 'T00:00:00');
-          if (schedDate < todayDate) {
-               if (matchesRecurrenceOnDate(todo.recurrence, todo.scheduled_date, todayDate)) {
-                   displayDateStr = todayStr;
-               } else {
-                   const nextDate = getNextOccurrence(todo.recurrence, todayDate);
-                   if (nextDate) {
-                       const y = nextDate.getFullYear();
-                       const m = String(nextDate.getMonth() + 1).padStart(2, '0');
-                       const d = String(nextDate.getDate()).padStart(2, '0');
-                       displayDateStr = `${y}-${m}-${d}`;
-                   }
-               }
-          }
-      }
-      
-      const d = new Date(displayDateStr + 'T00:00:00');
-      const diff = Math.round((d - todayDate) / 86400000);
-      let dateLabel = '';
-      if (currentTab !== 'today') {
-        if (diff === 0) dateLabel = '今天';
-        else if (diff === 1) dateLabel = '明天';
-        else if (diff > 1) dateLabel = `${diff} 天后`;
-        else if (diff < 0) dateLabel = `${-diff} 天前`;
-      }
-      if (dateLabel) {
-        const calIcon = `<svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>`;
-        badgesHtml += `<span class="reminder-badge date-badge">${calIcon} ${dateLabel}</span>`;
-      }
-    }
-
-    // Reminders badge
-    const remDesc = describeReminders(todo.reminders);
-    if (remDesc) {
-      const bellIcon = `<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path><path d="M13.73 21a2 2 0 0 1-3.46 0"></path></svg>`;
-      badgesHtml += `<span class="reminder-badge">${bellIcon} ${escapeHtml(remDesc)}</span>`;
-    }
-    // Legacy remind_at
-    if (!todo.reminders && todo.remind_at) {
-      const isPast = new Date(todo.remind_at) <= new Date();
-      const badgeClass = isPast ? 'reminder-badge past' : 'reminder-badge';
-      const bellIcon = `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path><path d="M13.73 21a2 2 0 0 1-3.46 0"></path></svg>`;
-      badgesHtml += `<span class="${badgeClass}">${bellIcon} ${formatReminderDisplay(todo.remind_at)}</span>`;
-    }
+    // Generate Badges HTML
+    const badgesHtml = buildTaskBadgesHtml(todo, todayStr, todayDate, currentTab);
 
     const showCheckbox = (currentTab === 'today');
     li.innerHTML = `
@@ -1395,13 +1345,81 @@ function renderTodos() {
     content.addEventListener('click', () => openModal(todo));
 
     const deleteBtn = li.querySelector('.delete-btn');
-    deleteBtn.addEventListener('click', () => deleteTodo(todo.id));
+    deleteBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      deleteTodo(todo.id);
+    });
 
     taskList.appendChild(li);
   });
 
   taskList.style.display = 'flex';
   updateStats(filtered);
+}
+
+// ──────────────────── HTML Badge Builders ────────────────────
+function buildTaskBadgesHtml(todo, todayStr, todayDate, currentTab) {
+  let badgesHtml = '';
+
+  // Recur logic
+  const recDesc = describeRecurrence(todo.recurrence);
+  if (recDesc) {
+    badgesHtml += `<span class="reminder-badge recurrence-badge">↻ ${escapeHtml(recDesc)}</span>`;
+  }
+  
+  if (todo.is_countdown) {
+    badgesHtml += `<span class="reminder-badge date-badge" style="color: #f39c12 !important; background: rgba(243, 156, 18, 0.1) !important;">⭐ 倒数日</span>`;
+  }
+  
+  if (todo.scheduled_date) {
+    let displayDateStr = todo.scheduled_date;
+    if (todo.recurrence && (currentTab === 'all' || currentTab === 'countdown')) {
+        const schedDate = new Date(todo.scheduled_date + 'T00:00:00');
+        if (schedDate < todayDate) {
+             if (matchesRecurrenceOnDate(todo.recurrence, todo.scheduled_date, todayDate)) {
+                 displayDateStr = todayStr;
+             } else {
+                 const nextDate = getNextOccurrence(todo.recurrence, todayDate);
+                 if (nextDate) {
+                     const y = nextDate.getFullYear();
+                     const m = String(nextDate.getMonth() + 1).padStart(2, '0');
+                     const d = String(nextDate.getDate()).padStart(2, '0');
+                     displayDateStr = `${y}-${m}-${d}`;
+                 }
+             }
+        }
+    }
+    
+    const d = new Date(displayDateStr + 'T00:00:00');
+    const diff = Math.round((d - todayDate) / 86400000);
+    let dateLabel = '';
+    if (currentTab !== 'today') {
+      if (diff === 0) dateLabel = '今天';
+      else if (diff === 1) dateLabel = '明天';
+      else if (diff > 1) dateLabel = `${diff} 天后`;
+      else if (diff < 0) dateLabel = `${-diff} 天前`;
+    }
+    if (dateLabel) {
+      const calIcon = `<svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>`;
+      badgesHtml += `<span class="reminder-badge date-badge">${calIcon} ${dateLabel}</span>`;
+    }
+  }
+
+  // Reminders badge
+  const remDesc = describeReminders(todo.reminders);
+  if (remDesc) {
+    const bellIcon = `<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path><path d="M13.73 21a2 2 0 0 1-3.46 0"></path></svg>`;
+    badgesHtml += `<span class="reminder-badge">${bellIcon} ${escapeHtml(remDesc)}</span>`;
+  }
+  
+  if (!todo.reminders && todo.remind_at) {
+    const isPast = new Date(todo.remind_at) <= new Date();
+    const badgeClass = isPast ? 'reminder-badge past' : 'reminder-badge';
+    const bellIcon = `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path><path d="M13.73 21a2 2 0 0 1-3.46 0"></path></svg>`;
+    badgesHtml += `<span class="${badgeClass}">${bellIcon} ${formatReminderDisplay(todo.remind_at)}</span>`;
+  }
+
+  return badgesHtml;
 }
 
 // ──────────────────── Stats ────────────────────

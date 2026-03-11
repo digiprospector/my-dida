@@ -1288,41 +1288,6 @@ body:has(.modal-overlay:not(.hidden)) .fab-btn {
   box-shadow: 0 4px 15px rgba(108, 92, 231, 0.3);
 }
 
-/* Old Auth Profile Section Styles (Kept if needed, but we've hidden it) */
-.login-open-btn, .logout-btn, .auth-submit-btn {
-  width: 100%;
-  padding: 12px;
-  border-radius: 8px;
-  border: none;
-  background: var(--color-primary);
-  color: #fff;
-  font-weight: 600;
-  cursor: pointer;
-  margin-top: 10px;
-  transition: all 0.2s;
-}
-
-.logout-btn {
-  background: rgba(255, 255, 255, 0.1);
-  border: 1px solid var(--color-border);
-}
-
-.user-info {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  margin-bottom: 12px;
-}
-
-.user-avatar {
-  font-size: 1.5rem;
-}
-
-.user-email-text {
-  font-weight: 600;
-  color: var(--color-text);
-}
-
 /* Auth Modal Content */
 .auth-modal-content {
   max-width: 360px !important;
